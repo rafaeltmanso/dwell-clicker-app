@@ -3,3 +3,9 @@ __pycache__/
 .venv/
 venv/
 codex-git-store/
+dist/
+build/
+*.spec
+pro.flag
+capture_screenshots.py
+screenshots/

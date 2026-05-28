@@ -1,13 +1,22 @@
 import ctypes
 import math
+import platform
+import sys
 import time
 import tkinter as tk
 from dataclasses import dataclass
-from tkinter import ttk
+from tkinter import font as tkfont, ttk
 
 
 user32 = ctypes.windll.user32
 shcore = getattr(ctypes.windll, "shcore", None)
+dwmapi = getattr(ctypes.windll, "dwmapi", None)
+
+try:
+    _win_ver = platform.version().split(".")
+    IS_WIN11 = len(_win_ver) >= 3 and int(_win_ver[2]) >= 22000
+except (ValueError, IndexError):
+    IS_WIN11 = False
 
 
 MOUSEEVENTF_LEFTDOWN = 0x0002
@@ -60,6 +69,28 @@ def set_dpi_awareness() -> None:
             shcore.SetProcessDpiAwareness(2)
         else:
             user32.SetProcessDPIAware()
+    except Exception:
+        pass
+
+
+def apply_dwm_effects(hwnd: int) -> None:
+    if not IS_WIN11 or not dwmapi:
+        return
+    try:
+        DWMWA_WINDOW_CORNER_PREFERENCE = 33
+        DWMWCP_ROUND = 2
+        dwmapi.DwmSetWindowAttribute(
+            hwnd, DWMWA_WINDOW_CORNER_PREFERENCE,
+            ctypes.byref(ctypes.c_int(DWMWCP_ROUND)),
+            ctypes.sizeof(ctypes.c_int)
+        )
+        DWMWA_SYSTEMBACKDROP_TYPE = 38
+        DWMSBT_MAINWINDOW = 2
+        dwmapi.DwmSetWindowAttribute(
+            hwnd, DWMWA_SYSTEMBACKDROP_TYPE,
+            ctypes.byref(ctypes.c_int(DWMSBT_MAINWINDOW)),
+            ctypes.sizeof(ctypes.c_int)
+        )
     except Exception:
         pass
 
@@ -175,9 +206,10 @@ class DwellClickerApp:
         set_dpi_awareness()
         self.root = tk.Tk()
         self.root.title("Dwell Clicker")
-        self.root.geometry("430x560")
-        self.root.minsize(390, 520)
-        self.root.configure(bg="#0f1117")
+        self.root.geometry("440x620")
+        self.root.minsize(400, 560)
+        self.root.configure(bg="#1a1a2e")
+        self.root.after(50, lambda: apply_dwm_effects(int(self.root.winfo_id())))
 
         self.settings = DwellSettings()
         self.anchor_pos = get_cursor_position()
@@ -198,6 +230,7 @@ class DwellClickerApp:
         self.status_var = tk.StringVar(value="Pausado")
         self.detail_var = tk.StringVar(value="Ative quando estiver pronto. F8 alterna rápido.")
         self.ring_test_var = tk.StringVar(value="")
+        self.value_labels = []  # Store value labels for each slider [dwell, tolerance, cooldown]
 
         self.configure_style()
         self.build_ui()
@@ -205,184 +238,358 @@ class DwellClickerApp:
         self.root.after(16, self.tick)
 
     def configure_style(self) -> None:
+        _family = "Segoe UI Variable Display" if IS_WIN11 else "Segoe UI"
+        _family_text = "Segoe UI Variable Text" if IS_WIN11 else _family
+
+        default_font = tkfont.nametofont("TkDefaultFont")
+        default_font.configure(family=_family_text, size=10)
+        tkfont.nametofont("TkTextFont").configure(family=_family_text, size=10)
+        tkfont.nametofont("TkHeadingFont").configure(family=_family, size=10)
+
         style = ttk.Style()
         style.theme_use("clam")
-        style.configure(".", font=("Segoe UI", 10), background="#0f1117", foreground="#eef2ff")
-        style.configure("TFrame", background="#0f1117")
-        style.configure("Panel.TFrame", background="#171a23", relief="flat")
-        style.configure("TLabel", background="#0f1117", foreground="#eef2ff")
-        style.configure("Panel.TLabel", background="#171a23", foreground="#eef2ff")
-        style.configure("Title.TLabel", font=("Segoe UI Semibold", 22), foreground="#f8fafc")
-        style.configure("Subtitle.TLabel", font=("Segoe UI", 10), foreground="#a5adbd")
-        style.configure("Status.TLabel", font=("Segoe UI Semibold", 12), foreground="#f8fafc")
+
+        # Base colors
+        bg_dark = "#1a1a2e"
+        bg_card = "#16213e"
+        bg_elevated = "#0f3460"
+        accent = "#00d9ff"
+        accent_hover = "#00b8d9"
+        text_primary = "#ffffff"
+        text_secondary = "#a0aec0"
+        border_color = "#2d3748"
+
+        style.configure(".", font=(_family_text, 10), background=bg_dark, foreground=text_primary)
+
+        # Card frame - rounded appearance
+        style.configure("Card.TFrame",
+            background=bg_card,
+            relief="flat",
+            borderwidth=0
+        )
+
+        # Labels
+        style.configure("Title.TLabel",
+            font=(_family, 28, "bold"),
+            foreground=text_primary,
+            background=bg_dark
+        )
+        style.configure("Subtitle.TLabel",
+            font=(_family_text, 11),
+            foreground=text_secondary,
+            background=bg_dark
+        )
+        style.configure("Section.TLabel",
+            font=(_family, 11, "semibold"),
+            foreground=text_primary,
+            background=bg_card,
+            padding=(0, 8, 0, 12)
+        )
+        style.configure("SettingLabel.TLabel",
+            font=(_family_text, 10),
+            foreground=text_primary,
+            background=bg_card
+        )
+        style.configure("Value.TLabel",
+            font=(_family, 11, "bold"),
+            foreground=accent,
+            background=bg_card
+        )
+
+        # Modern toggle button with gradient feel
         style.configure(
-            "Accent.TButton",
-            font=("Segoe UI Semibold", 11),
-            padding=(16, 10),
-            background="#2f80ed",
-            foreground="#ffffff",
-            bordercolor="#2f80ed",
-            lightcolor="#2f80ed",
-            darkcolor="#2f80ed",
+            "Toggle.TButton",
+            font=(_family, 11, "bold"),
+            padding=(20, 12),
+            background=accent,
+            foreground="#0a0a0f",
+            borderwidth=0,
+            lightcolor=accent,
+            darkcolor=accent_hover,
         )
         style.map(
-            "Accent.TButton",
-            background=[("active", "#56a3ff"), ("pressed", "#1f6fd1")],
-            foreground=[("active", "#ffffff")],
+            "Toggle.TButton",
+            background=[
+                ("active", accent_hover),
+                ("pressed", "#0095b3"),
+                ("disabled", "#4a5568")
+            ]
         )
         style.configure(
-            "TCheckbutton",
-            background="#171a23",
-            foreground="#eef2ff",
-            focuscolor="#171a23",
+            "ToggleActive.TButton",
+            font=(_family, 11, "bold"),
+            padding=(20, 12),
+            background="#ef4444",
+            foreground="#ffffff",
+            borderwidth=0
         )
-        style.map("TCheckbutton", background=[("active", "#171a23")])
-        style.configure(
-            "TRadiobutton",
-            background="#171a23",
-            foreground="#eef2ff",
-            focuscolor="#171a23",
+        style.map(
+            "ToggleActive.TButton",
+            background=[
+                ("active", "#dc2626"),
+                ("pressed", "#b91c1c")
+            ]
         )
-        style.map("TRadiobutton", background=[("active", "#171a23")])
+
+        # Segmented button group (like GNOME)
         style.configure(
-            "Horizontal.TScale",
-            background="#171a23",
-            troughcolor="#2a3142",
-            lightcolor="#56a3ff",
-            darkcolor="#56a3ff",
+            "Segment.TFrame",
+            background=bg_elevated,
+            relief="flat"
         )
         style.configure(
-            "TCombobox",
-            fieldbackground="#0f1117",
-            background="#171a23",
-            foreground="#eef2ff",
-            arrowcolor="#eef2ff",
-            bordercolor="#2a3142",
-            lightcolor="#2a3142",
-            darkcolor="#2a3142",
+            "Segment.TRadiobutton",
+            font=(_family_text, 10),
+            background=bg_elevated,
+            foreground=text_primary,
+            focuscolor=bg_elevated,
+            padding=(12, 8)
+        )
+        style.map(
+            "Segment.TRadiobutton",
+            background=[
+                ("active", accent),
+                ("pressed", accent_hover)
+            ],
+            foreground=[("active", "#0a0a0f")]
+        )
+
+        # Checkbox
+        style.configure(
+            "Modern.TCheckbutton",
+            font=(_family_text, 10),
+            background=bg_card,
+            foreground=text_primary,
+            focuscolor=bg_card,
+            padding=(0, 8)
+        )
+        style.map(
+            "Modern.TCheckbutton",
+            background=[("active", bg_card)]
+        )
+
+        # Slider
+        style.configure(
+            "Modern.Horizontal.TScale",
+            background=bg_card,
+            troughcolor=bg_elevated,
+            lightcolor=accent,
+            darkcolor=accent,
+            borderwidth=0,
+            padding=0
+        )
+
+        # Combobox
+        style.configure(
+            "Modern.TCombobox",
+            font=(_family_text, 10),
+            fieldbackground=bg_elevated,
+            background=bg_card,
+            foreground=text_primary,
+            arrowcolor=accent,
+            bordercolor=border_color,
+            lightcolor=border_color,
+            darkcolor=border_color
+        )
+        style.map(
+            "Modern.TCombobox",
+            fieldcolor=[("focus", bg_elevated), ("!focus", bg_elevated)]
+        )
+
+        # Small button
+        style.configure(
+            "Small.TButton",
+            font=(_family_text, 9),
+            padding=(12, 6),
+            background=bg_elevated,
+            foreground=text_primary,
+            borderwidth=0
+        )
+        style.map(
+            "Small.TButton",
+            background=[
+                ("active", accent),
+                ("pressed", accent_hover)
+            ],
+            foreground=[("active", "#0a0a0f")]
         )
 
     def build_ui(self) -> None:
-        outer = ttk.Frame(self.root, padding=24)
+        outer = ttk.Frame(self.root, padding=(28, 24))
         outer.pack(fill="both", expand=True)
 
+        # Header
         ttk.Label(outer, text="Dwell Clicker", style="Title.TLabel").pack(anchor="w")
         ttk.Label(
             outer,
             text="Clique automaticamente ao manter o cursor parado.",
             style="Subtitle.TLabel",
-        ).pack(anchor="w", pady=(2, 18))
+        ).pack(anchor="w", pady=(4, 20))
 
-        status_panel = ttk.Frame(outer, style="Panel.TFrame", padding=18)
-        status_panel.pack(fill="x", pady=(0, 14))
-        status_panel.columnconfigure(0, weight=1)
+        # Status card with modern toggle
+        status_card = ttk.Frame(outer, style="Card.TFrame")
+        status_card.pack(fill="x", pady=(0, 16))
+        status_card.columnconfigure(0, weight=1)
 
-        ttk.Label(status_panel, textvariable=self.status_var, style="Status.TLabel").grid(
-            row=0, column=0, sticky="w"
-        )
-        ttk.Label(status_panel, textvariable=self.detail_var, style="Panel.TLabel").grid(
-            row=1, column=0, sticky="w", pady=(5, 0)
-        )
+        status_content = ttk.Frame(status_card, style="Card.TFrame")
+        status_content.grid(row=0, column=0, padx=20, pady=16, sticky="ew")
+        status_content.columnconfigure(0, weight=1)
+
+        # Status indicator dot
+        self.status_indicator = tk.Canvas(status_content, width=12, height=12,
+            background="#1a1a2e", highlightthickness=0)
+        self.status_indicator.create_oval(1, 1, 11, 11, fill="#4a5568", outline="")
+        self.status_indicator.grid(row=0, column=0, sticky="w", pady=(0, 6))
+
+        ttk.Label(status_content, textvariable=self.status_var, style="SettingLabel.TLabel").grid(
+            row=0, column=1, sticky="w", padx=(10, 0))
+        ttk.Label(status_content, textvariable=self.detail_var,
+            font=("Segoe UI Variable Text", 9), foreground="#a0aec0", background="#16213e").grid(
+            row=1, column=0, columnspan=2, sticky="w", pady=(6, 0))
+
         self.toggle_button = ttk.Button(
-            status_panel,
+            status_card,
             text="Ativar",
-            style="Accent.TButton",
+            style="Toggle.TButton",
             command=self.toggle_enabled,
         )
-        self.toggle_button.grid(row=0, column=1, rowspan=2, padx=(16, 0), sticky="e")
+        self.toggle_button.grid(row=0, column=1, padx=(16, 20), pady=16, sticky="ns")
 
-        settings_panel = ttk.Frame(outer, style="Panel.TFrame", padding=18)
-        settings_panel.pack(fill="both", expand=True)
-        settings_panel.columnconfigure(0, weight=1)
+        # Settings card
+        settings_card = ttk.Frame(outer, style="Card.TFrame")
+        settings_card.pack(fill="both", expand=True)
+        settings_card.columnconfigure(0, weight=1)
 
-        self.add_slider(
-            settings_panel,
-            row=0,
+        # Dwell Time Section
+        ttk.Label(settings_card, text="Tempo", style="Section.TLabel").grid(
+            row=0, column=0, sticky="ew", padx=20, pady=(20, 0))
+
+        dwell_frame = ttk.Frame(settings_card, style="Card.TFrame")
+        dwell_frame.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 16))
+        self.add_modern_slider(
+            dwell_frame, row=0,
             label="Tempo parado",
             variable=self.dwell_var,
-            from_=250,
-            to=2200,
-            suffix="ms",
+            from_=250, to=2200, suffix="ms",
             command=self.sync_settings,
-        )
-        self.add_slider(
-            settings_panel,
-            row=2,
-            label="Tolerancia de movimento",
-            variable=self.tolerance_var,
-            from_=4,
-            to=48,
-            suffix="px",
-            command=self.sync_settings,
-        )
-        self.add_slider(
-            settings_panel,
-            row=4,
-            label="Intervalo apos clique",
-            variable=self.cooldown_var,
-            from_=150,
-            to=1800,
-            suffix="ms",
-            command=self.sync_settings,
+            label_index=0
         )
 
-        ttk.Label(settings_panel, text="Tipo de clique", style="Panel.TLabel").grid(
-            row=6, column=0, sticky="w", pady=(18, 8)
+        # Tolerance Section
+        ttk.Label(settings_card, text="Movimento", style="Section.TLabel").grid(
+            row=2, column=0, sticky="ew", padx=20)
+
+        tolerance_frame = ttk.Frame(settings_card, style="Card.TFrame")
+        tolerance_frame.grid(row=3, column=0, sticky="ew", padx=20, pady=(0, 16))
+        self.add_modern_slider(
+            tolerance_frame, row=0,
+            label="Tolerância de movimento",
+            variable=self.tolerance_var,
+            from_=4, to=48, suffix="px",
+            command=self.sync_settings,
+            label_index=1
         )
-        modes = ttk.Frame(settings_panel, style="Panel.TFrame")
-        modes.grid(row=7, column=0, sticky="ew")
-        modes.columnconfigure((0, 1, 2), weight=1)
-        for idx, (text, value) in enumerate(
-            [("Esquerdo", "left"), ("Direito", "right"), ("Duplo", "double")]
-        ):
-            ttk.Radiobutton(
-                modes,
+
+        # Cooldown Section
+        ttk.Label(settings_card, text="Intervalo", style="Section.TLabel").grid(
+            row=4, column=0, sticky="ew", padx=20)
+
+        cooldown_frame = ttk.Frame(settings_card, style="Card.TFrame")
+        cooldown_frame.grid(row=5, column=0, sticky="ew", padx=20, pady=(0, 16))
+        self.add_modern_slider(
+            cooldown_frame, row=0,
+            label="Intervalo após clique",
+            variable=self.cooldown_var,
+            from_=150, to=1800, suffix="ms",
+            command=self.sync_settings,
+            label_index=2
+        )
+
+        # Click Mode - GNOME style segmented control
+        ttk.Label(settings_card, text="Tipo de clique", style="Section.TLabel").grid(
+            row=6, column=0, sticky="ew", padx=20, pady=(8, 0))
+
+        modes_frame = ttk.Frame(settings_card, style="Card.TFrame")
+        modes_frame.grid(row=7, column=0, sticky="ew", padx=20, pady=(0, 16))
+        modes_frame.columnconfigure((0, 1, 2), weight=1)
+
+        click_options = [
+            ("Esquerdo", "left"),
+            ("Direito", "right"),
+            ("Duplo", "double")
+        ]
+
+        for idx, (text, value) in enumerate(click_options):
+            btn_frame = ttk.Frame(modes_frame, style="Segment.TFrame")
+            btn_frame.grid(row=0, column=idx, sticky="ew", padx=(0 if idx == 0 else 4, 0 if idx == 2 else 4))
+
+            rb = ttk.Radiobutton(
+                btn_frame,
                 text=text,
                 value=value,
                 variable=self.click_mode_var,
+                style="Segment.TRadiobutton",
                 command=self.sync_settings,
-            ).grid(row=0, column=idx, sticky="w", padx=(0, 10))
+            )
+            rb.pack(fill="both", expand=True, padx=2, pady=2)
+
+        # Visual feedback toggle
+        feedback_frame = ttk.Frame(settings_card, style="Card.TFrame")
+        feedback_frame.grid(row=8, column=0, sticky="ew", padx=20, pady=(8, 0))
 
         ttk.Checkbutton(
-            settings_panel,
+            feedback_frame,
             text="Mostrar indicador circular no cursor",
             variable=self.feedback_var,
+            style="Modern.TCheckbutton",
             command=self.sync_settings,
-        ).grid(row=8, column=0, sticky="w", pady=(20, 0))
+        ).pack(side="left")
 
-        color_row = ttk.Frame(settings_panel, style="Panel.TFrame")
-        color_row.grid(row=9, column=0, sticky="ew", pady=(14, 0))
-        color_row.columnconfigure(1, weight=1)
-        ttk.Label(color_row, text="Cor do indicador", style="Panel.TLabel").grid(
-            row=0, column=0, sticky="w"
-        )
+        # Color picker row
+        color_frame = ttk.Frame(settings_card, style="Card.TFrame")
+        color_frame.grid(row=9, column=0, sticky="ew", padx=20, pady=(16, 0))
+        color_frame.columnconfigure(0, weight=1)
+        color_frame.columnconfigure(1, weight=0)
+
+        ttk.Label(color_frame, text="Cor do indicador", style="SettingLabel.TLabel").grid(
+            row=0, column=0, sticky="w", pady=(0, 8))
+
         color_picker = ttk.Combobox(
-            color_row,
+            color_frame,
             textvariable=self.color_var,
             values=list(INDICATOR_COLORS.keys()),
             state="readonly",
             width=14,
+            style="Modern.TCombobox",
+            font=("Segoe UI Variable Text", 10)
         )
         color_picker.grid(row=0, column=1, sticky="e")
         color_picker.bind("<<ComboboxSelected>>", lambda _event: self.sync_settings())
 
-        ttk.Button(
-            settings_panel,
-            text="Testar indicador",
-            command=self.preview_ring,
-        ).grid(row=10, column=0, sticky="w", pady=(14, 0))
-        ttk.Label(settings_panel, textvariable=self.ring_test_var, style="Panel.TLabel").grid(
-            row=11, column=0, sticky="w", pady=(8, 0)
-        )
+        # Preview button
+        preview_frame = ttk.Frame(settings_card, style="Card.TFrame")
+        preview_frame.grid(row=10, column=0, sticky="w", padx=20, pady=(16, 20))
 
+        ttk.Button(
+            preview_frame,
+            text="Testar indicador",
+            style="Small.TButton",
+            command=self.preview_ring,
+        ).pack(side="left")
+
+        ttk.Label(preview_frame, textvariable=self.ring_test_var,
+            font=("Segoe UI Variable Text", 9), foreground="#a0aec0",
+            background="#16213e").pack(side="left", padx=(12, 0))
+
+        # Footer tip
         footer = ttk.Label(
             outer,
             text="Dica: F8 pausa ou ativa sem precisar voltar ao painel.",
             style="Subtitle.TLabel",
         )
-        footer.pack(anchor="w", pady=(14, 0))
+        footer.pack(anchor="w", pady=(16, 0))
 
-    def add_slider(
+    def add_modern_slider(
         self,
         parent: ttk.Frame,
         row: int,
@@ -392,27 +599,46 @@ class DwellClickerApp:
         to: int,
         suffix: str,
         command,
+        label_index: int = -1,
     ) -> None:
-        header = ttk.Frame(parent, style="Panel.TFrame")
-        header.grid(row=row, column=0, sticky="ew", pady=(0, 4))
-        header.columnconfigure(0, weight=1)
-        ttk.Label(header, text=label, style="Panel.TLabel").grid(row=0, column=0, sticky="w")
-        value_label = ttk.Label(header, text="", style="Panel.TLabel")
-        value_label.grid(row=0, column=1, sticky="e")
+        # Header row with label and current value
+        header = ttk.Frame(parent, style="Card.TFrame")
+        header.pack(fill="x", pady=(8, 4))
+
+        ttk.Label(header, text=label, style="SettingLabel.TLabel").pack(side="left")
+
+        value_label = ttk.Label(header, text="", style="Value.TLabel")
+        value_label.pack(side="right")
+
+        # Store label for later updates
+        if label_index >= 0 and label_index < len(self.value_labels):
+            self.value_labels[label_index] = value_label
 
         def update_label(*_args) -> None:
             value_label.configure(text=f"{variable.get()} {suffix}")
 
         variable.trace_add("write", update_label)
         update_label()
-        ttk.Scale(
+
+        # Modern slider
+        scale = ttk.Scale(
             parent,
             from_=from_,
             to=to,
             variable=variable,
             orient="horizontal",
+            style="Modern.Horizontal.TScale",
             command=lambda _value: command(),
-        ).grid(row=row + 1, column=0, sticky="ew", pady=(0, 8))
+        )
+        scale.pack(fill="x", pady=(0, 8))
+
+        # Min/Max labels below slider
+        scale_footer = ttk.Frame(parent, style="Card.TFrame")
+        scale_footer.pack(fill="x")
+        ttk.Label(scale_footer, text=str(from_), font=("Segoe UI Variable Text", 8),
+            foreground="#718096", background="#16213e").pack(side="left")
+        ttk.Label(scale_footer, text=str(to), font=("Segoe UI Variable Text", 8),
+            foreground="#718096", background="#16213e").pack(side="right")
 
     def sync_settings(self) -> None:
         self.settings.dwell_ms = int(self.dwell_var.get())
@@ -439,9 +665,17 @@ class DwellClickerApp:
         self.detail_var.set(
             "Mova o cursor para fora do painel e mantenha parado."
             if enabled
-            else "Ative quando estiver pronto. F8 alterna rapido."
+            else "Ative quando estiver pronto. F8 alterna rápido."
         )
-        self.toggle_button.configure(text="Pausar" if enabled else "Ativar")
+
+        # Update button style based on state
+        if enabled:
+            self.toggle_button.configure(text="Pausar", style="ToggleActive.TButton")
+            self.status_indicator.itemconfig(1, fill="#00d9ff")  # Active cyan dot
+        else:
+            self.toggle_button.configure(text="Ativar", style="Toggle.TButton")
+            self.status_indicator.itemconfig(1, fill="#4a5568")  # Inactive gray dot
+
         if not enabled:
             self.ring.hide()
 
