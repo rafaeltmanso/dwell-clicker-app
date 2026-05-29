@@ -1,26 +1,29 @@
 # Dwell Clicker
 
-Um aplicativo simples para Windows que clica automaticamente quando o cursor fica parado.
+A simple Windows app that clicks automatically when your cursor stays still.
 
-## Como abrir
+## How to run
 
-Clique duas vezes em `launch.bat` ou execute:
+Double-click `launch.bat` or run:
 
 ```powershell
 python dwell_clicker.py
 ```
 
-## Recursos
+## Features
 
-- Ativar/pausar pelo painel
-- Atalho global `F8`
-- Tempo de permanencia ajustavel
-- Tolerancia de movimento ajustavel
-- Intervalo depois do clique
-- Clique esquerdo, direito ou duplo
-- Indicador circular ao redor do cursor
-- Cores ajustaveis para o indicador
+- Enable/pause from the panel
+- Global hotkey `F8` (customizable)
+- Adjustable dwell time
+- Adjustable movement tolerance
+- Adjustable cooldown after click
+- Left, right, or double click
+- Circular indicator ring at cursor
+- Customizable indicator color (Pro: 5 extra colors)
+- Always-on cursor option (overrides sites that hide the cursor)
+- Panel protection (panel itself is excluded from clicking)
+- Windows 11 rounded corners, Mica backdrop, high-DPI support
 
-## Observacao
+## Note
 
-Este app usa a API nativa do Windows para ler a posicao do cursor e enviar cliques. Ele nao depende de internet nem de pacotes externos.
+This app uses the native Windows API to read cursor position and send clicks. It requires no internet connection and has no external dependencies.

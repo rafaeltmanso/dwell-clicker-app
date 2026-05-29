@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dwell Clicker — Auto-click when your cursor pauses</title>
-  <meta name="description" content="Windows auto-clicker. Click automatically when your mouse stops moving. Customizable dwell time, tolerance, and indicator colors.">
+  <meta name="description" content="Free Windows auto-clicker. Click automatically when your mouse stops moving. Customizable dwell time, tolerance, cooldown, and click modes.">
   <link rel="icon" href="images/favicon.png" type="image/png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -18,6 +18,7 @@
       --text: #e2e8f0;
       --muted: #7d8797;
       --border: #2a2a3e;
+      --pro-accent: #a78bfa;
       --radius: 12px;
       --radius-lg: 20px;
     }
@@ -30,62 +31,108 @@
       min-height: 100vh;
     }
 
+    a { color: var(--accent); }
+
     .container {
-      max-width: 960px;
+      max-width: 1000px;
       margin: 0 auto;
       padding: 0 24px;
     }
 
+    /* --- Nav --- */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 0;
+    }
+    .nav-logo {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .nav-logo span {
+      color: var(--accent);
+    }
+    .nav-links {
+      display: flex;
+      gap: 24px;
+    }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
     /* --- Hero --- */
     .hero {
-      text-align: center;
-      padding: 80px 0 60px;
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 64px;
+      align-items: center;
+      padding: 40px 0 100px;
+    }
+    .hero-content {}
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 100px;
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    .hero-badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #39d98a;
     }
     .hero h1 {
-      font-size: 3rem;
+      font-size: 2.8rem;
       font-weight: 800;
-      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+    }
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--accent), var(--pro-accent));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
-    .hero p {
-      font-size: 1.2rem;
+    .hero-desc {
+      font-size: 1.1rem;
       color: var(--muted);
-      margin: 16px 0 40px;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
+      margin-bottom: 32px;
+      max-width: 460px;
     }
-    .hero-badge {
-      display: inline-block;
-      padding: 6px 16px;
-      border-radius: 100px;
-      background: var(--elevated);
-      border: 1px solid var(--border);
-      font-size: 0.85rem;
-      color: var(--muted);
-      margin-bottom: 20px;
-    }
-
-    .hero-screenshot {
-      position: relative;
-      display: inline-block;
-    }
-    .hero-screenshot img {
-      max-width: 100%;
-      height: auto;
-      border-radius: var(--radius-lg);
-      box-shadow: 0 20px 60px rgba(0, 217, 255, 0.1);
-      border: 1px solid var(--border);
-    }
-
     .hero-cta {
       display: flex;
-      gap: 16px;
-      justify-content: center;
+      gap: 12px;
       flex-wrap: wrap;
+    }
+    .hero-proof {
       margin-top: 40px;
+      display: flex;
+      gap: 32px;
+    }
+    .proof-item {}
+    .proof-num {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .proof-label {
+      font-size: 0.8rem;
+      color: var(--muted);
     }
 
     /* --- Buttons --- */
@@ -93,14 +140,15 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 14px 32px;
+      padding: 12px 28px;
       border-radius: 100px;
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-weight: 600;
       text-decoration: none;
       transition: all 0.2s;
       border: none;
       cursor: pointer;
+      white-space: nowrap;
     }
     .btn-primary {
       background: var(--accent);
@@ -108,31 +156,110 @@
     }
     .btn-primary:hover {
       background: #33e1ff;
-      transform: translateY(-2px);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(0, 217, 255, 0.25);
     }
-    .btn-secondary {
-      background: var(--card);
+    .btn-pro {
+      background: var(--pro-accent);
+      color: #fff;
+    }
+    .btn-pro:hover {
+      background: #b89dfc;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(167, 139, 250, 0.25);
+    }
+    .btn-outline {
+      background: transparent;
       color: var(--text);
       border: 1px solid var(--border);
     }
-    .btn-secondary:hover {
+    .btn-outline:hover {
+      background: var(--card);
+      border-color: var(--muted);
+    }
+
+    /* --- Screenshot --- */
+    .hero-screenshot {
+      position: relative;
+    }
+    .hero-screenshot img {
+      width: 100%;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border);
+    }
+    .screenshot-badge {
+      position: absolute;
+      bottom: -12px;
+      left: 50%;
+      transform: translateX(-50%);
       background: var(--elevated);
-      transform: translateY(-2px);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* --- How it works --- */
+    .how-it-works {
+      padding: 80px 0;
+      border-top: 1px solid var(--border);
+    }
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 48px;
+    }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+    }
+    .step {
+      position: relative;
+    }
+    .step-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+    .step h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .step p {
+      font-size: 0.9rem;
+      color: var(--muted);
     }
 
     /* --- Features --- */
     .features {
       padding: 80px 0;
-    }
-    .features h2 {
-      text-align: center;
-      font-size: 2rem;
-      font-weight: 700;
-      margin-bottom: 48px;
+      border-top: 1px solid var(--border);
     }
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      grid-template-columns: repeat(3, 1fr);
       gap: 20px;
     }
     .feature-card {
@@ -140,153 +267,244 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 28px 24px;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, transform 0.2s;
     }
     .feature-card:hover {
       border-color: var(--accent-dim);
+      transform: translateY(-2px);
     }
     .feature-icon {
-      font-size: 1.5rem;
-      margin-bottom: 12px;
+      font-size: 1.4rem;
+      margin-bottom: 14px;
     }
     .feature-card h3 {
-      font-size: 1.1rem;
+      font-size: 1rem;
       font-weight: 600;
       margin-bottom: 8px;
     }
     .feature-card p {
-      font-size: 0.9rem;
+      font-size: 0.875rem;
       color: var(--muted);
+      line-height: 1.5;
     }
 
-    /* --- Download --- */
-    .download {
-      padding: 80px 0;
+    /* --- Pricing --- */
+    .pricing {
+      padding: 80px 0 100px;
+      border-top: 1px solid var(--border);
     }
-    .download h2 {
-      text-align: center;
-      font-size: 2rem;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-    .download-subtitle {
-      text-align: center;
-      color: var(--muted);
-      margin-bottom: 48px;
-    }
-    .download-grid {
+    .pricing-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 24px;
+      max-width: 760px;
+      margin: 0 auto;
     }
-    .download-card {
+    .pricing-card {
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 40px 32px;
-      text-align: center;
+      padding: 40px 36px;
       display: flex;
       flex-direction: column;
-      align-items: center;
     }
-    .download-card.featured {
-      border-color: var(--accent-dim);
-      background: linear-gradient(180deg, var(--elevated) 0%, var(--card) 100%);
+    .pricing-card.pro {
+      border-color: var(--pro-accent);
+      background: linear-gradient(160deg, #1e1b38 0%, var(--card) 60%);
       position: relative;
     }
-    .download-card.featured::before {
+    .pricing-card.pro::before {
       content: "Pro";
       position: absolute;
-      top: 16px;
-      right: 16px;
+      top: 20px;
+      right: 20px;
       padding: 4px 12px;
       border-radius: 100px;
-      background: var(--accent);
-      color: #0f0f1a;
-      font-size: 0.75rem;
+      background: var(--pro-accent);
+      color: #fff;
+      font-size: 0.7rem;
       font-weight: 700;
-      text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
-    .download-card h3 {
-      font-size: 1.5rem;
+    .pricing-card h3 {
+      font-size: 1.3rem;
       font-weight: 700;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
-    .download-card .price {
-      font-size: 2.5rem;
+    .pricing-card .tagline {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    .price {
+      font-size: 2.8rem;
       font-weight: 800;
-      margin: 16px 0;
+      margin-bottom: 24px;
     }
-    .download-card .price small {
-      font-size: 1rem;
-      font-weight: 400;
-      color: var(--muted);
+    .price .currency { font-size: 1.2rem; vertical-align: super; font-weight: 600; }
+    .price .period { font-size: 0.85rem; font-weight: 400; color: var(--muted); }
+
+    .feature-list {
+      list-style: none;
+      margin-bottom: 28px;
+      flex: 1;
     }
-    .download-card .desc {
-      color: var(--muted);
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
       font-size: 0.9rem;
-      margin-bottom: 24px;
+      padding: 6px 0;
+      color: var(--text);
     }
-    .download-card .platform {
-      font-size: 0.8rem;
+    .feature-list li .check {
+      color: #39d98a;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .feature-list li .lock {
       color: var(--muted);
-      margin-bottom: 24px;
-      padding: 6px 12px;
-      background: var(--bg);
-      border-radius: 100px;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+      margin-top: 2px;
     }
-    .download-card .btn {
+    .feature-list li.muted {
+      color: var(--muted);
+    }
+    .feature-list li.muted .check { display: none; }
+
+    .pricing-card .btn {
       width: 100%;
       justify-content: center;
-      margin-bottom: 12px;
     }
-    .download-links {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      gap: 8px;
+
+    .upgrade-note {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
     }
+    .upgrade-note a { color: var(--pro-accent); }
 
     /* --- Footer --- */
     footer {
-      text-align: center;
-      padding: 40px 0;
       border-top: 1px solid var(--border);
-      color: var(--muted);
+      padding: 32px 0;
+    }
+    footer .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .footer-copy {
       font-size: 0.85rem;
+      color: var(--muted);
     }
-    footer a {
-      color: var(--accent);
+    .footer-links {
+      display: flex;
+      gap: 20px;
+    }
+    .footer-links a {
+      font-size: 0.85rem;
+      color: var(--muted);
       text-decoration: none;
+      transition: color 0.2s;
     }
-    footer a:hover {
-      text-decoration: underline;
-    }
+    .footer-links a:hover { color: var(--text); }
 
     /* --- Responsive --- */
-    @media (max-width: 700px) {
-      .hero h1 { font-size: 2rem; }
-      .hero { padding: 60px 0 40px; }
-      .download-grid { grid-template-columns: 1fr; }
+    @media (max-width: 800px) {
+      .hero { grid-template-columns: 1fr; gap: 48px; padding-bottom: 60px; }
+      .hero-screenshot { max-width: 400px; margin: 0 auto; }
+      .steps { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr 1fr; }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 440px; }
+      nav .nav-links { display: none; }
+    }
+    @media (max-width: 520px) {
       .features-grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 2.2rem; }
     }
   </style>
 </head>
 <body>
 
+<div class="container">
+  <nav>
+    <a href="#" class="nav-logo">Dwell<span>Clicker</span></a>
+    <div class="nav-links">
+      <a href="#how-it-works">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+    </div>
+  </nav>
+</div>
+
 <main>
   <!-- Hero -->
-  <section class="hero">
+  <section>
     <div class="container">
-      <span class="hero-badge">Windows 10 / 11</span>
-      <h1>Dwell Clicker</h1>
-      <p>Click automatically when your mouse stops moving. No setup, no dependencies — just download and run.</p>
-      <div class="hero-screenshot">
-        <img src="images/panel.png" alt="Dwell Clicker panel screenshot" width="400" height="563">
+      <div class="hero">
+        <div class="hero-content">
+          <div class="hero-badge">
+            <div class="hero-badge-dot"></div>
+            Windows 10 / 11
+          </div>
+          <h1>Auto-click by<br>dwelling your cursor</h1>
+          <p class="hero-desc">Stop clicking. Just hover. Dwell Clicker detects when you hold your cursor still and clicks for you — no configuration required.</p>
+          <div class="hero-cta">
+            <a href="#pricing" class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download Free
+            </a>
+            <a href="#pricing" class="btn btn-outline">See Pro</a>
+          </div>
+          <div class="hero-proof">
+            <div class="proof-item">
+              <div class="proof-num">100%</div>
+              <div class="proof-label">Free forever</div>
+            </div>
+            <div class="proof-item">
+              <div class="proof-num">0</div>
+              <div class="proof-label">Dependencies</div>
+            </div>
+            <div class="proof-item">
+              <div class="proof-num">&lt;1MB</div>
+              <div class="proof-label">Executable</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-screenshot">
+          <img src="images/panel.png" alt="Dwell Clicker panel" width="420" height="593">
+          <div class="screenshot-badge">No install needed — runs immediately</div>
+        </div>
       </div>
-      <div class="hero-cta">
-        <a href="#download" class="btn btn-primary">Get Dwell Clicker</a>
-        <a href="#features" class="btn btn-secondary">See Features</a>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="container">
+      <div class="section-label">How it works</div>
+      <div class="section-title">Three steps. Zero setup.</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Download and run</h3>
+          <p>Download the .exe and double-click it. No installation, no dependencies, no admin required.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Hover on your target</h3>
+          <p>Move your cursor to whatever you want to click. Keep it still. The ring fills up as time passes.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Click fires automatically</h3>
+          <p>When the ring fills, the click fires. Press F8 at any time to pause or resume from anywhere.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -294,69 +512,113 @@
   <!-- Features -->
   <section class="features" id="features">
     <div class="container">
-      <h2>Features</h2>
+      <div class="section-label">Features</div>
+      <div class="section-title">Everything you need</div>
       <div class="features-grid">
         <div class="feature-card">
-          <div class="feature-icon">🎯</div>
-          <h3>Dwell Click</h3>
-          <p>Hover your cursor over a target and wait. Dwell Clicker clicks automatically when you stop moving.</p>
+          <div class="feature-icon">&#127919;</div>
+          <h3>Dwell Time</h3>
+          <p>Adjust how long you need to hold still before a click fires. Range from 250ms to 2200ms.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">⏱️</div>
-          <h3>Adjustable Timing</h3>
-          <p>Set dwell time (250–2200ms), movement tolerance (4–48px), and cooldown (150–1800ms) to suit your needs.</p>
+          <div class="feature-icon">&#10697;</div>
+          <h3>Movement Tolerance</h3>
+          <p>Set how much accidental jitter is ignored. Perfect for fine-tuned targets or loose hand control.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🖱️</div>
-          <h3>Left, Right & Double Click</h3>
-          <p>Choose between left click, right click, or double click — all through the native Windows API.</p>
+          <div class="feature-icon">&#9202;</div>
+          <h3>Click Cooldown</h3>
+          <p>Prevent accidental double-fires. Set a minimum delay between consecutive clicks.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🔄</div>
-          <h3>Visual Indicator Ring</h3>
-          <p>A circular progress ring follows your cursor, showing exactly when the click will fire. Pick from 6 colors.</p>
+          <div class="feature-icon">&#128187;</div>
+          <h3>Click Modes</h3>
+          <p>Left click, right click, or double click. Switch modes directly from the panel — no setup needed.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">⌨️</div>
-          <h3>F8 Hotkey</h3>
-          <p>Toggle the clicker on/off instantly with F8 — no need to switch back to the panel.</p>
+          <div class="feature-icon">&#128994;</div>
+          <h3>Visual Ring Indicator</h3>
+          <p>A progress ring follows your cursor showing exactly when the click will fire. Pro unlocks 5 extra colors and custom profiles.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🪟</div>
+          <div class="feature-icon">&#128203;</div>
+          <h3>Custom Profiles (Pro)</h3>
+          <p>Save and switch between multiple configurations. Perfect for swapping between games, apps, or workflows with a single click.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#9000;</div>
+          <h3>F8 Global Hotkey</h3>
+          <p>Toggle on and off instantly from any app. No need to switch back to the panel. Works everywhere.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#128467;</div>
+          <h3>Always-On Cursor</h3>
+          <p>Force the cursor to stay visible even on sites that hide it — handy for overlays and dark UIs.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#128187;</div>
+          <h3>Panel Protection</h3>
+          <p>The panel itself is excluded from clicking. Move your cursor back to dismiss or reconfigure without accidental fires.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#127918;</div>
           <h3>Windows 11 Ready</h3>
-          <p>Rounded corners, Mica backdrop, and high-DPI support. Built for Windows 10 and 11.</p>
+          <p>Rounded corners, Mica backdrop, and high-DPI support. Looks and feels native on Win 10 and 11.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Download -->
-  <section class="download" id="download">
+  <!-- Pricing -->
+  <section class="pricing" id="pricing">
     <div class="container">
-      <h2>Download</h2>
-      <p class="download-subtitle">Windows only. Single .exe file — no installer required.</p>
-      <div class="download-grid">
+      <div class="section-label">Pricing</div>
+      <div class="section-title">Free, or support development</div>
+
+      <div class="pricing-grid">
         <!-- Free -->
-        <div class="download-card">
-          <h3>Free</h3>
-          <div class="price">$0 <small>free</small></div>
-          <p class="desc">Full-featured, no limits. Exactly the same app as Pro.</p>
-          <span class="platform">Windows 10 / 11</span>
-          <div class="download-links">
-            <a href="https://github.com/rafaeltmanso/dwell-clicker-app/releases/download/v1.0.0/dwell-clicker-free.exe" class="btn btn-secondary" target="_blank">Download Free (v1.0)</a>
-          </div>
+        <div class="pricing-card">
+          <h3>Dwell Clicker Free</h3>
+          <p class="tagline">Open source. No strings.</p>
+          <div class="price">$0 <span class="period">free forever</span></div>
+          <ul class="feature-list">
+            <li><span class="check">&#10003;</span> Full dwell-click functionality</li>
+            <li><span class="check">&#10003;</span> Left, right, and double click modes</li>
+            <li><span class="check">&#10003;</span> Adjustable dwell time, tolerance, cooldown</li>
+            <li><span class="check">&#10003;</span> Visual ring indicator</li>
+            <li><span class="check">&#10003;</span> F8 global hotkey</li>
+            <li><span class="check">&#10003;</span> Always-on cursor option</li>
+            <li><span class="check">&#10003;</span> Blue indicator color</li>
+            <li class="muted"><span class="lock">&#128274;</span> 5 extra indicator colors (Green, Purple, Pink, Yellow, Red)</li>
+            <li class="muted"><span class="lock">&#128274;</span> Custom profiles (save and switch configurations)</li>
+          </ul>
+          <a href="https://github.com/rafaeltmanso/dwell-clicker-app/releases" class="btn btn-outline" target="_blank">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download on GitHub
+          </a>
         </div>
 
         <!-- Pro -->
-        <div class="download-card featured">
+        <div class="pricing-card pro">
           <h3>Dwell Clicker Pro</h3>
-          <div class="price">$5 <small>one-time</small></div>
-          <p class="desc">Support development and get the same great app. Pay once, use forever.</p>
-          <span class="platform">Windows 10 / 11</span>
-          <div class="download-links">
-            <a href="https://dwellclicker.gumroad.com/l/dwell-clicker-pro" class="btn btn-primary" target="_blank">Buy on Gumroad — $5</a>
-            <a href="https://dwellclicker.itch.io/dwell-clicker-pro" class="btn btn-secondary" target="_blank">Buy on itch.io — $5</a>
-          </div>
+          <p class="tagline">Same app. More expression.</p>
+          <div class="price"><span class="currency">$</span>5 <span class="period">one-time</span></div>
+          <ul class="feature-list">
+            <li><span class="check">&#10003;</span> Everything in Free</li>
+            <li><span class="check">&#10003;</span> 5 extra indicator colors</li>
+            <li><span class="check">&#10003;</span> Green, Purple, Pink, Yellow, Red</li>
+            <li><span class="check">&#10003;</span> Custom profiles (save and switch configs)</li>
+            <li><span class="check">&#10003;</span> Pay once, use forever</li>
+            <li><span class="check">&#10003;</span> Supports independent development</li>
+          </ul>
+          <a href="https://dwellclicker.gumroad.com/l/dwell-clicker-pro" class="btn btn-pro" target="_blank">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Buy on Gumroad
+          </a>
+          <a href="https://dwellclicker.itch.io/dwell-clicker-pro" class="btn btn-outline" style="margin-top:8px" target="_blank">
+            or on itch.io
+          </a>
+          <p class="upgrade-note"><a href="https://github.com/rafaeltmanso/dwell-clicker-app">Source code available on GitHub</a></p>
         </div>
       </div>
     </div>
@@ -365,7 +627,11 @@
 
 <footer>
   <div class="container">
-    <p>Dwell Clicker &mdash; Built with Python &amp; tkinter. <a href="https://github.com/rafaeltmanso/dwell-clicker-app" target="_blank">View source on GitHub</a>.</p>
+    <p class="footer-copy">Dwell Clicker &mdash; Built with Python &amp; tkinter. No telemetry, no internet required.</p>
+    <div class="footer-links">
+      <a href="https://github.com/rafaeltmanso/dwell-clicker-app" target="_blank">GitHub</a>
+      <a href="mailto:rafaeltmanso@pm.me">Contact</a>
+    </div>
   </div>
 </footer>
 
