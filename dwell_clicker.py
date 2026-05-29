@@ -53,12 +53,15 @@ PRO_COLORS = {"Green", "Purple", "Pink", "Yellow", "Red"}
 
 
 def is_pro() -> bool:
-    """Check if pro.flag is present next to the exe or source script."""
+    """Check if pro.flag is present next to the exe or inside the bundled resources."""
     if getattr(sys, "frozen", False):
-        base = Path(sys.executable).parent
-    else:
-        base = Path(__file__).parent
-    return (base / "pro.flag").is_file()
+        # Check bundled resources first (set by PyInstaller --add-data)
+        meipass = getattr(sys, "_MEIPASS", "")
+        if meipass and (Path(meipass) / "pro.flag").is_file():
+            return True
+        # Also check next to the exe on disk (user-placed flag)
+        return Path(sys.executable).parent.joinpath("pro.flag").is_file()
+    return Path(__file__).parent.joinpath("pro.flag").is_file()
 
 
 def _profiles_path() -> Path:
@@ -313,6 +316,8 @@ class DwellClickerApp:
 
         self.configure_style()
         self.build_ui()
+        # Re-apply profile now that combobox exists (ensures ring color is correct)
+        self.root.after(0, lambda: self._apply_profile(self.current_profile))
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self.root.bind("<Key>", self.on_key_press)
         self.root.after(16, self.tick)
@@ -622,12 +627,28 @@ class DwellClickerApp:
         outer.pack(fill="both", expand=True)
 
         # Header
-        ttk.Label(outer, text="Dwell Clicker", style="Title.TLabel").pack(anchor="w")
+        header_frame = ttk.Frame(outer, style="Card.TFrame")
+        header_frame.pack(anchor="w", fill="x", pady=(0, 4))
+        title_label = ttk.Label(header_frame, text="Dwell Clicker", style="Title.TLabel")
+        title_label.pack(side="left")
+
+        if is_pro():
+            pro_badge = tk.Label(
+                header_frame,
+                text="  Pro  ",
+                font=("Segoe UI Variable Display", 10, "bold"),
+                background="#a78bfa",
+                foreground="#ffffff",
+                padx=8,
+                pady=2,
+            )
+            pro_badge.pack(side="left", padx=(10, 0))
+
         ttk.Label(
             outer,
             text="Click automatically when you hold your cursor still.",
             style="Subtitle.TLabel",
-        ).pack(anchor="w", pady=(4, 20))
+        ).pack(anchor="w", pady=(8, 20))
 
         # Status card with modern toggle
         status_card = ttk.Frame(outer, style="Card.TFrame")
@@ -851,7 +872,7 @@ class DwellClickerApp:
 
         # Paywall nudge for Free users
         if not is_pro():
-            self.color_pro_nudge = tk.Frame(color_frame, style="Card.TFrame")
+            self.color_pro_nudge = ttk.Frame(color_frame, style="Card.TFrame")
             self.color_pro_nudge.grid(row=1, column=0, columnspan=2, sticky="w", pady=(4, 0))
             ttk.Label(
                 self.color_pro_nudge,
