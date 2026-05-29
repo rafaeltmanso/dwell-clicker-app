@@ -23,10 +23,18 @@ MOUSEEVENTF_LEFTDOWN = 0x0002
 MOUSEEVENTF_LEFTUP = 0x0004
 MOUSEEVENTF_RIGHTDOWN = 0x0008
 MOUSEEVENTF_RIGHTUP = 0x0010
-VK_F8 = 0x77
 GWL_EXSTYLE = -20
 WS_EX_TRANSPARENT = 0x00000020
 WS_EX_TOOLWINDOW = 0x00000080
+
+
+VK_MAP = {
+    "F1": 0x70, "F2": 0x71, "F3": 0x72, "F4": 0x73, "F5": 0x74, "F6": 0x75,
+    "F7": 0x76, "F8": 0x77, "F9": 0x78, "F10": 0x79, "F11": 0x7A, "F12": 0x7B,
+    "F13": 0x7C, "F14": 0x7D, "F15": 0x7E, "F16": 0x7F, "F17": 0x80, "F18": 0x81,
+    "F19": 0x82, "F20": 0x83, "F21": 0x84, "F22": 0x85, "F23": 0x86, "F24": 0x87,
+}
+VK_REVERSE = {v: k for k, v in VK_MAP.items()}
 
 
 INDICATOR_COLORS = {
@@ -61,6 +69,9 @@ class DwellSettings:
     click_mode: str = "left"
     visual_feedback: bool = True
     indicator_color: str = "Azul"
+    hotkey_vk: int = 0x77
+    hotkey_name: str = "F8"
+    always_show_cursor: bool = False
 
 
 def set_dpi_awareness() -> None:
@@ -206,8 +217,8 @@ class DwellClickerApp:
         set_dpi_awareness()
         self.root = tk.Tk()
         self.root.title("Dwell Clicker")
-        self.root.geometry("440x620")
-        self.root.minsize(400, 560)
+        self.root.geometry("440x660")
+        self.root.minsize(400, 600)
         self.root.configure(bg="#1a1a2e")
         self.root.after(50, lambda: apply_dwm_effects(int(self.root.winfo_id())))
 
@@ -228,13 +239,17 @@ class DwellClickerApp:
         self.feedback_var = tk.BooleanVar(value=self.settings.visual_feedback)
         self.color_var = tk.StringVar(value=self.settings.indicator_color)
         self.status_var = tk.StringVar(value="Pausado")
-        self.detail_var = tk.StringVar(value="Ative quando estiver pronto. F8 alterna rápido.")
+        self.detail_var = tk.StringVar(value=f"Ative quando estiver pronto. {self.settings.hotkey_name} alterna rápido.")
         self.ring_test_var = tk.StringVar(value="")
+        self.hotkey_var = tk.StringVar(value=self.settings.hotkey_name)
+        self.always_cursor_var = tk.BooleanVar(value=self.settings.always_show_cursor)
+        self.capturing_hotkey = False
         self.value_labels = []  # Store value labels for each slider [dwell, tolerance, cooldown]
 
         self.configure_style()
         self.build_ui()
         self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self.root.bind("<Key>", self.on_key_press)
         self.root.after(16, self.tick)
 
     def configure_style(self) -> None:
@@ -545,6 +560,14 @@ class DwellClickerApp:
             command=self.sync_settings,
         ).pack(side="left")
 
+        ttk.Checkbutton(
+            feedback_frame,
+            text="Mostrar cursor sempre (mesmo quando cursor some em sites)",
+            variable=self.always_cursor_var,
+            style="Modern.TCheckbutton",
+            command=self.sync_settings,
+        ).pack(side="left", padx=(16, 0))
+
         # Color picker row
         color_frame = ttk.Frame(settings_card, style="Card.TFrame")
         color_frame.grid(row=9, column=0, sticky="ew", padx=20, pady=(16, 0))
@@ -566,9 +589,33 @@ class DwellClickerApp:
         color_picker.grid(row=0, column=1, sticky="e")
         color_picker.bind("<<ComboboxSelected>>", lambda _event: self.sync_settings())
 
+        # Hotkey section
+        hotkey_section = ttk.Frame(settings_card, style="Card.TFrame")
+        hotkey_section.grid(row=10, column=0, sticky="ew", padx=20, pady=(8, 0))
+        hotkey_section.columnconfigure(0, weight=1)
+
+        ttk.Label(hotkey_section, text="Atalho", style="Section.TLabel").grid(
+            row=0, column=0, sticky="w")
+
+        hotkey_row = ttk.Frame(hotkey_section, style="Card.TFrame")
+        hotkey_row.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+        hotkey_row.columnconfigure(0, weight=1)
+
+        ttk.Label(hotkey_row, text="Tecla de atalho", style="SettingLabel.TLabel").grid(
+            row=0, column=0, sticky="w")
+
+        self.hotkey_btn = ttk.Button(
+            hotkey_row,
+            textvariable=self.hotkey_var,
+            style="Small.TButton",
+            width=10,
+            command=self.start_hotkey_capture,
+        )
+        self.hotkey_btn.grid(row=0, column=1, sticky="e")
+
         # Preview button
         preview_frame = ttk.Frame(settings_card, style="Card.TFrame")
-        preview_frame.grid(row=10, column=0, sticky="w", padx=20, pady=(16, 20))
+        preview_frame.grid(row=11, column=0, sticky="w", padx=20, pady=(16, 20))
 
         ttk.Button(
             preview_frame,
@@ -582,12 +629,12 @@ class DwellClickerApp:
             background="#16213e").pack(side="left", padx=(12, 0))
 
         # Footer tip
-        footer = ttk.Label(
+        self.footer = ttk.Label(
             outer,
-            text="Dica: F8 pausa ou ativa sem precisar voltar ao painel.",
+            text=f"Dica: {self.settings.hotkey_name} pausa ou ativa sem precisar voltar ao painel.",
             style="Subtitle.TLabel",
         )
-        footer.pack(anchor="w", pady=(16, 0))
+        self.footer.pack(anchor="w", pady=(16, 0))
 
     def add_modern_slider(
         self,
@@ -647,8 +694,7 @@ class DwellClickerApp:
         self.settings.click_mode = self.click_mode_var.get()
         self.settings.visual_feedback = self.feedback_var.get()
         self.settings.indicator_color = self.color_var.get()
-        if not self.settings.visual_feedback:
-            self.ring.hide()
+        self.settings.always_show_cursor = self.always_cursor_var.get()
 
     def toggle_enabled(self) -> None:
         self.set_enabled(not self.settings.enabled)
@@ -665,7 +711,7 @@ class DwellClickerApp:
         self.detail_var.set(
             "Mova o cursor para fora do painel e mantenha parado."
             if enabled
-            else "Ative quando estiver pronto. F8 alterna rápido."
+            else f"Ative quando estiver pronto. {self.settings.hotkey_name} alterna rápido."
         )
 
         # Update button style based on state
@@ -733,14 +779,19 @@ class DwellClickerApp:
             remaining = max(0, cooldown_seconds - (now - self.last_click_time))
             self.detail_var.set(f"Aguardando {remaining:.1f}s antes do proximo clique.")
 
-        if (
+        color = INDICATOR_COLORS.get(self.settings.indicator_color, "#56a3ff")
+
+        if self.settings.enabled and self.settings.always_show_cursor and not self.is_pointer_over_panel(x, y):
+            active = now >= self.grace_until and not self.waiting_for_movement and not cooling_down
+            p = progress if active else 0
+            self.ring.show_at(x, y, p, active, color)
+        elif (
             self.settings.enabled
             and self.settings.visual_feedback
             and not self.is_pointer_over_panel(x, y)
             and now >= self.grace_until
             and not self.waiting_for_movement
         ):
-            color = INDICATOR_COLORS.get(self.settings.indicator_color, "#56a3ff")
             self.ring.show_at(x, y, 0 if cooling_down else progress, True, color)
         else:
             self.ring.hide()
@@ -756,8 +807,30 @@ class DwellClickerApp:
         except Exception:
             return False
 
+    def start_hotkey_capture(self) -> None:
+        self.capturing_hotkey = True
+        self.hotkey_var.set("...")
+
+    def on_key_press(self, event: tk.Event) -> None:
+        if not self.capturing_hotkey:
+            return
+        self.capturing_hotkey = False
+
+        name = event.keysym
+        vk = VK_MAP.get(name)
+        if vk is None:
+            self.hotkey_var.set(self.settings.hotkey_name)
+            return
+
+        self.settings.hotkey_vk = vk
+        self.settings.hotkey_name = name
+        self.hotkey_var.set(name)
+        self.footer.configure(
+            text=f"Dica: {name} pausa ou ativa sem precisar voltar ao painel."
+        )
+
     def handle_hotkey(self) -> None:
-        is_down = bool(user32.GetAsyncKeyState(VK_F8) & 0x8000)
+        is_down = bool(user32.GetAsyncKeyState(self.settings.hotkey_vk) & 0x8000)
         if is_down and not self.hotkey_was_down:
             self.toggle_enabled()
         self.hotkey_was_down = is_down
