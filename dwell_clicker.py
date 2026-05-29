@@ -302,7 +302,6 @@ class DwellClickerApp:
         self.color_var = tk.StringVar(value=self.settings.indicator_color)
         self.status_var = tk.StringVar(value="Paused")
         self.detail_var = tk.StringVar(value=f"Enable when ready. {self.settings.hotkey_name} toggles quickly.")
-        self.ring_test_var = tk.StringVar(value="")
         self.profile_status_var = tk.StringVar(value="")
         self.hotkey_var = tk.StringVar(value=self.settings.hotkey_name)
         self.always_cursor_var = tk.BooleanVar(value=self.settings.always_show_cursor)
@@ -925,20 +924,6 @@ class DwellClickerApp:
         self.hotkey_btn.grid(row=0, column=1, sticky="e")
 
         # Preview button
-        preview_frame = ttk.Frame(settings_card, style="Card.TFrame")
-        preview_frame.grid(row=13, column=0, sticky="w", padx=20, pady=(16, 20))
-
-        ttk.Button(
-            preview_frame,
-            text="Test indicator",
-            style="Small.TButton",
-            command=self.preview_ring,
-        ).pack(side="left")
-
-        ttk.Label(preview_frame, textvariable=self.ring_test_var,
-            font=("Segoe UI Variable Text", 9), foreground="#a0aec0",
-            background="#16213e").pack(side="left", padx=(12, 0))
-
         # Footer tip
         self.footer = ttk.Label(
             outer,
@@ -1039,14 +1024,6 @@ class DwellClickerApp:
 
         if not enabled:
             self.ring.hide()
-
-    def preview_ring(self) -> None:
-        x, y = get_cursor_position()
-        color = INDICATOR_COLORS.get(self.settings.indicator_color, "#56a3ff")
-        self.ring.show_at(x, y, 0.75, True, color)
-        self.ring_test_var.set("Indicator shown around cursor for 2 seconds.")
-        self.root.after(2000, self.ring.hide)
-        self.root.after(2200, lambda: self.ring_test_var.set(""))
 
     def tick(self) -> None:
         self.handle_hotkey()
